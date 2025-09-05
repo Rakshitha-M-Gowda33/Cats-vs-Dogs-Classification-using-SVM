@@ -1,0 +1,56 @@
+import os
+import cv2
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score
+import matplotlib.pyplot as plt
+import random
+def load_data(folder, img_size=(128,128)):
+    data = []
+    labels = []
+    class_names = sorted(os.listdir(folder))  # auto-detect classes (cats, dogs)
+    
+    for label, category in enumerate(class_names):
+        category_path = os.path.join(folder, category)
+        if not os.path.isdir(category_path):
+            continue
+        for file in os.listdir(category_path):
+            filepath = os.path.join(category_path, file)
+            if file.lower().endswith(('.png','.jpg','.jpeg')):
+                try:
+                    img = cv2.imread(filepath)
+                    img = cv2.resize(img, img_size)
+                    data.append(img.flatten())
+                    labels.append(label)
+                except:
+                    pass
+    return np.array(data), np.array(labels), class_names
+
+train_path = r"C:/Users/Rakshitha/Downloads/dogs_cats_small/train"
+test_path  = r"C:/Users/Rakshitha/Downloads/dogs_cats_small/test"
+
+X_train, y_train, class_names = load_data(train_path)
+X_test, y_test, _ = load_data(test_path)
+
+print("Classes detected:", class_names)
+print("Train dataset:", X_train.shape, y_train.shape)
+print("Test dataset:", X_test.shape, y_test.shape)
+pca = PCA(n_components=50)  # fewer features for speed
+X_train_pca = pca.fit_transform(X_train)
+X_test_pca = pca.transform(X_test)
+clf = LogisticRegression(max_iter=2000)
+clf.fit(X_train_pca, y_train)
+y_pred = clf.predict(X_test_pca)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=class_names))
+def show_predictions(n=5):
+    idxs = random.sample(range(len(X_test)), n)
+    for idx in idxs:
+        img = X_test[idx].reshape(128,128,3)  # reshape flattened image
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        plt.title(f"Predicted: {class_names[y_pred[idx]]}, Actual: {class_names[y_test[idx]]}")
+        plt.axis("off")
+        plt.show()
+
+show_predictions(5)
